@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BLG Bayblade Stats",
+  title: "BLG Beyblade Stats",
   description: "Track rankings, matches, and tournament results for Bladers League Gaming",
   icons: {
     icon: "/blg.svg",

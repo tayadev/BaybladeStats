@@ -10,12 +10,12 @@ export default function AboutPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">About</h1>
           <p className="text-muted-foreground">
-            Learn more about BaybladeStats
+            Learn more about BeybladeStats
           </p>
         </div>
 
         <section className="rounded-lg border bg-card p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold mb-3">What is BaybladeStats?</h2>
+          <h2 className="text-2xl font-semibold mb-3">What is BeybladeStats?</h2>
           <p className="text-muted-foreground leading-relaxed">
             Add a description about the project here
           </p>

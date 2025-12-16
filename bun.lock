@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "baybladestats",
+      "name": "beybladestats",
       "dependencies": {
         "@convex-dev/auth": "^0.0.90",
         "@radix-ui/react-checkbox": "^1.3.3",
