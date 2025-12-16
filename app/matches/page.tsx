@@ -1,26 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { EditMatchDialog } from "@/components/edit-match-dialog";
-import type { Id } from "@/convex/_generated/dataModel";
-
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import DataTable from "@/components/table";
-import { Header } from "@/components/header";
-import { CreateMatchDialog } from "@/components/create-match-dialog";
+import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
+
+import { DirectoryPage } from "@/components/directory-page";
+import { EditMatchDialog } from "@/components/edit-match-dialog";
+import { CreateMatchDialog } from "@/components/create-match-dialog";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
-import Link from "next/link";
-
-function formatDate(ms: number): string {
-  try {
-    return new Date(ms).toLocaleString();
-  } catch {
-    return "";
-  }
-}
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useQuery } from "convex/react";
+import { formatDateTime } from "@/lib/utils";
 
 type MatchItem = {
   id: string;
@@ -96,33 +88,21 @@ export default function MatchesPage() {
     rawTournament: m.tournament,
     rawWinner: m.winner,
     rawLoser: m.loser,
-    date: formatDate(m.date),
+    date: formatDateTime(m.date),
     tournament: m.tournament as unknown as string,
     winner: playerMap.get(m.winner) || "Unknown",
     loser: playerMap.get(m.loser) || "Unknown",
   }));
 
   return (
-    <>
-      <Header />
-      <main className="p-8 flex flex-col gap-6 max-w-5xl mx-auto">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold text-foreground">Matches</h1>
-          <p className="text-muted-foreground">
-            Browse all matches.
-          </p>
-        </div>
-
-        <CreateMatchDialog />
-
-        {matches === undefined ? (
-          <div className="flex items-center justify-center py-20">
-            <p className="text-muted-foreground">Loading matches…</p>
-          </div>
-        ) : (
-          <DataTable columns={columns} data={items} />
-        )}
-      </main>
-    </>
+    <DirectoryPage
+      title="Matches"
+      description="Browse all matches."
+      createButton={<CreateMatchDialog />}
+      columns={columns}
+      data={items}
+      isLoading={matches === undefined || players === undefined}
+      loadingLabel="Loading matches…"
+    />
   );
 }

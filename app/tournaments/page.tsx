@@ -1,26 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { EditTournamentDialog } from "@/components/edit-tournament-dialog";
-import type { Id } from "@/convex/_generated/dataModel";
-
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import DataTable from "@/components/table";
-import { Header } from "@/components/header";
-import { CreateTournamentDialog } from "@/components/create-tournament-dialog";
-import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import type { ColumnDef } from "@tanstack/react-table";
+
+import { DirectoryPage } from "@/components/directory-page";
+import { EditTournamentDialog } from "@/components/edit-tournament-dialog";
+import { CreateTournamentDialog } from "@/components/create-tournament-dialog";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
-
-function formatDate(ms: number): string {
-  try {
-    return new Date(ms).toLocaleString();
-  } catch {
-    return "";
-  }
-}
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useQuery } from "convex/react";
+import { formatDateTime } from "@/lib/utils";
 
 type TournamentItem = {
   id: string;
@@ -79,30 +71,18 @@ export default function TournamentsPage() {
     rawDate: t.date,
     rawWinnerId: t.winner,
     name: t.name,
-    date: formatDate(t.date),
+    date: formatDateTime(t.date),
   }));
 
   return (
-    <>
-      <Header />
-      <main className="p-8 flex flex-col gap-6 max-w-5xl mx-auto">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold text-foreground">Tournaments</h1>
-          <p className="text-muted-foreground">
-            Browse all tournaments.
-          </p>
-        </div>
-
-        <CreateTournamentDialog />
-
-        {tournaments === undefined ? (
-          <div className="flex items-center justify-center py-20">
-            <p className="text-muted-foreground">Loading tournaments…</p>
-          </div>
-        ) : (
-          <DataTable columns={columns} data={items} />
-        )}
-      </main>
-    </>
+    <DirectoryPage
+      title="Tournaments"
+      description="Browse all tournaments."
+      createButton={<CreateTournamentDialog />}
+      columns={columns}
+      data={items}
+      isLoading={tournaments === undefined}
+      loadingLabel="Loading tournaments…"
+    />
   );
 }

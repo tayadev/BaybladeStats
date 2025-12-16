@@ -1,21 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Edit, Trash } from "lucide-react";
-import { Combobox, type ComboboxItem } from "@/components/combobox";
+import { EntityDialog } from "@/components/ui/entity-dialog";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface EditMatchDialogProps {
@@ -30,23 +19,6 @@ interface EditMatchDialogProps {
 }
 
 export function EditMatchDialog({ match, onMatchUpdated }: EditMatchDialogProps) {
-  const [open, setOpen] = useState(false);
-  const toLocalInputValue = (ms: number) => {
-    const d = new Date(ms);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    const mm = pad(d.getMonth() + 1);
-    const dd = pad(d.getDate());
-    const hh = pad(d.getHours());
-    const mi = pad(d.getMinutes());
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-  };
-  const [date, setDate] = useState(toLocalInputValue(match.date));
-  const [tournament, setTournament] = useState<string>((match.tournament as unknown as string) || "none");
-  const [winner, setWinner] = useState<string>(match.winner as unknown as string);
-  const [loser, setLoser] = useState<string>(match.loser as unknown as string);
-  const [loading, setLoading] = useState(false);
-
   const currentUser = useQuery(api.myFunctions.getCurrentUser);
   const tournaments = useQuery(api.myFunctions.listTournaments);
   const players = useQuery(api.myFunctions.listPlayers);
@@ -57,141 +29,73 @@ export function EditMatchDialog({ match, onMatchUpdated }: EditMatchDialogProps)
     return null;
   }
 
-  const tournamentItems: ComboboxItem[] = [
-    { value: "none", label: "No Tournament" },
-    ...(tournaments ?? []).map((t) => ({
-      value: t._id,
-      label: t.name,
-    })),
-  ];
+  const tournamentOptions = [{ label: "No Tournament", value: "none" }, ...(tournaments ?? []).map((t) => ({ label: t.name, value: String(t._id) }))];
+  const playerOptions = (players ?? []).map((p) => ({ label: p.name, value: String(p._id) }));
 
-  const playerItems: ComboboxItem[] = (players ?? []).map((p) => ({
-    value: p._id,
-    label: p.name,
-  }));
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!date || !winner || !loser || winner === loser) return;
-
-    setLoading(true);
-    try {
-      const matchDate = new Date(date).getTime();
-      await updateMatch({ 
-        id: match._id,
-        date: matchDate,
-        tournament: tournament && tournament !== "none" ? (tournament as Id<"tournaments">) : undefined,
-        winner: winner as Id<"users">,
-        loser: loser as Id<"users">,
-      });
-      setOpen(false);
-      onMatchUpdated?.();
-    } catch (error) {
-      console.error("Failed to update match:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this match?")) return;
-
-    setLoading(true);
-    try {
-      await deleteMatch({ id: match._id });
-      setOpen(false);
-      onMatchUpdated?.();
-    } catch (error) {
-      console.error("Failed to delete match:", error);
-    } finally {
-      setLoading(false);
-    }
+  const toLocalInputValue = (ms: number) => {
+    const d = new Date(ms);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    const mm = pad(d.getMonth() + 1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
-          <Edit className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Match</DialogTitle>
-          <DialogDescription>
-            Update or delete this match.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleUpdate} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="date">Date & Time</Label>
-            <Input
-              id="date"
-              type="datetime-local"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Tournament (Optional)</Label>
-            <Combobox
-              items={tournamentItems}
-              value={tournament}
-              onValueChange={setTournament}
-              placeholder="Select tournament (optional)..."
-              searchPlaceholder="Search tournaments..."
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Winner</Label>
-            <Combobox
-              items={playerItems}
-              value={winner}
-              onValueChange={setWinner}
-              placeholder="Select winner..."
-              searchPlaceholder="Search players..."
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Loser</Label>
-            <Combobox
-              items={playerItems}
-              value={loser}
-              onValueChange={setLoser}
-              placeholder="Select loser..."
-              searchPlaceholder="Search players..."
-              disabled={loading}
-            />
-          </div>
-          <div className="flex gap-3 justify-between">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={loading}
-              className="gap-2"
-            >
-              <Trash className="h-4 w-4" /> Delete
-            </Button>
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading || !date || !winner || !loser || winner === loser}>
-                {loading ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <div className="flex items-center gap-2">
+      <EntityDialog
+        mode="edit"
+        title="Edit Match"
+        description="Update this match."
+        trigger={
+          <Button variant="ghost" size="sm" className="gap-2">
+            <Edit className="h-4 w-4" />
+          </Button>
+        }
+        fields={[
+          { id: "date", label: "Date & Time", type: "datetime-local", required: true },
+          { id: "tournament", label: "Tournament (Optional)", type: "select", placeholder: "Select tournament (optional)...", options: tournamentOptions },
+          { id: "winner", label: "Winner", type: "select", required: true, placeholder: "Select winner...", options: playerOptions },
+          { id: "loser", label: "Loser", type: "select", required: true, placeholder: "Select loser...", options: playerOptions },
+        ]}
+        initialValues={{
+          date: toLocalInputValue(match.date),
+          tournament: String(match.tournament ?? "none"),
+          winner: String(match.winner),
+          loser: String(match.loser),
+        }}
+        submitLabel="Save Changes"
+        onSubmit={async (vals) => {
+          const date = new Date(String(vals.date)).getTime();
+          const tournament = String(vals.tournament ?? "");
+          const winner = String(vals.winner ?? "");
+          const loser = String(vals.loser ?? "");
+          if (!date || !winner || !loser || winner === loser) return;
+          await updateMatch({
+            id: match._id,
+            date,
+            tournament: tournament && tournament !== "none" ? (tournament as Id<"tournaments">) : undefined,
+            winner: winner as Id<"users">,
+            loser: loser as Id<"users">,
+          });
+          onMatchUpdated?.();
+        }}
+      />
+      <Button
+        type="button"
+        variant="destructive"
+        onClick={async () => {
+          if (!confirm("Are you sure you want to delete this match?")) return;
+          await deleteMatch({ id: match._id });
+          onMatchUpdated?.();
+        }}
+        className="gap-2"
+        size="sm"
+      >
+        <Trash className="h-4 w-4" />
+      </Button>
+    </div>
   );
 }

@@ -37,14 +37,6 @@ export default function PlayerProfilePage() {
     id ? { playerId: id } : undefined
   );
 
-  if (player === undefined) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-lg text-muted-foreground">Loading...</p>
-      </div>
-    );
-  }
-
   if (!validId) {
     return (
       <>
@@ -56,6 +48,14 @@ export default function PlayerProfilePage() {
           </div>
         </main>
       </>
+    );
+  }
+
+  if (player === undefined) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg text-muted-foreground">Loading...</p>
+      </div>
     );
   }
 
@@ -157,19 +157,59 @@ export default function PlayerProfilePage() {
             <p className="text-muted-foreground">No matches found.</p>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {matches.map((match) => (
-                <div
-                  key={match._id}
-                  className="p-3 rounded border border-border text-sm"
-                >
-                  <p className="text-muted-foreground">
-                    {new Date(match.date).toLocaleDateString()}
-                  </p>
-                  <p className="text-foreground mt-1">
-                    Match Details
-                  </p>
-                </div>
-              ))}
+              {matches.map((match) => {
+                const opponentName = match.opponentName ?? "Unknown opponent";
+                const resultLabel = match.playerWon ? "Win" : "Loss";
+                const opponent = match.opponentId ? (
+                  <Link
+                    href={`/player/${match.opponentId}`}
+                    className="text-foreground hover:underline"
+                  >
+                    {opponentName}
+                  </Link>
+                ) : (
+                  opponentName
+                );
+
+                return (
+                  <div
+                    key={match._id}
+                    className="p-3 rounded border border-border text-sm flex items-start justify-between gap-3"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground">
+                        {new Date(match.date).toLocaleDateString()}
+                      </p>
+                      <p className="text-foreground font-medium">
+                        {resultLabel} vs {opponent}
+                      </p>
+                      {match.tournament ? (
+                        <p className="text-xs text-muted-foreground">
+                          Tournament: {" "}
+                          <Link
+                            href={`/tournament/${match.tournament}`}
+                            className="hover:underline"
+                          >
+                            {match.tournamentName ?? "Tournament"}
+                          </Link>
+                          {match.tournamentDate
+                            ? ` · ${new Date(match.tournamentDate).toLocaleDateString()}`
+                            : null}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-semibold ${
+                        match.playerWon
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-rose-100 text-rose-700"
+                      }`}
+                    >
+                      {resultLabel}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>

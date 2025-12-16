@@ -1,28 +1,22 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import DataTable from "@/components/table";
-import { Header } from "@/components/header";
-import { CreatePlayerDialog } from "@/components/create-player-dialog";
-import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import type { ColumnDef } from "@tanstack/react-table";
+
+import { DirectoryPage } from "@/components/directory-page";
+import { CreatePlayerDialog } from "@/components/create-player-dialog";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
-
-function formatDate(ms: number): string {
-  try {
-    return new Date(ms).toLocaleDateString();
-  } catch {
-    return "";
-  }
-}
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
+import { formatDate } from "@/lib/utils";
 
 type PlayerItem = {
   id: string;
   name: string;
   role: "player" | "judge";
   created: string;
+  hasAccount: boolean;
 };
 
 const columns: ColumnDef<PlayerItem, any>[] = [
@@ -31,6 +25,21 @@ const columns: ColumnDef<PlayerItem, any>[] = [
     header: "Name",
     cell: ({ row }) => (
       <span className="font-medium">{row.getValue("name")}</span>
+    ),
+  },
+  {
+    accessorKey: "hasAccount",
+    header: "Account",
+    cell: ({ row }) => (
+      <span
+        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+          row.original.hasAccount
+            ? "bg-emerald-100 text-emerald-700"
+            : "bg-slate-200 text-slate-700"
+        }`}
+      >
+        {row.original.hasAccount ? "Linked" : "None"}
+      </span>
     ),
   },
   {
@@ -69,29 +78,18 @@ export default function PlayersDirectoryPage() {
     name: p.name,
     role: p.role,
     created: formatDate(p._creationTime),
+    hasAccount: p.hasAccount,
   }));
 
   return (
-    <>
-      <Header />
-      <main className="p-8 flex flex-col gap-6 max-w-5xl mx-auto">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold text-foreground">Players</h1>
-          <p className="text-muted-foreground">
-            Browse all registered players.
-          </p>
-        </div>
-
-        <CreatePlayerDialog />
-
-        {players === undefined ? (
-          <div className="flex items-center justify-center py-20">
-            <p className="text-muted-foreground">Loading players…</p>
-          </div>
-        ) : (
-          <DataTable columns={columns} data={items} />
-        )}
-      </main>
-    </>
+    <DirectoryPage
+      title="Players"
+      description="Browse all registered players."
+      createButton={<CreatePlayerDialog />}
+      columns={columns}
+      data={items}
+      isLoading={players === undefined}
+      loadingLabel="Loading players…"
+    />
   );
 }

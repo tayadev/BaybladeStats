@@ -31,5 +31,8 @@ export default defineSchema({
     winner: v.id("users"),
     loser: v.id("users"),
     deleted: v.optional(v.boolean()),
-  }),
+  })
+    .index("by_winner", ["winner"])
+    .index("by_loser", ["loser"])
+    .index("by_tournament", ["tournament"]),
 });

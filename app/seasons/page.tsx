@@ -1,26 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { EditSeasonDialog } from "@/components/edit-season-dialog";
-import type { Id } from "@/convex/_generated/dataModel";
-
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import DataTable from "@/components/table";
-import { Header } from "@/components/header";
-import { CreateSeasonDialog } from "@/components/create-season-dialog";
-import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import type { ColumnDef } from "@tanstack/react-table";
+
+import { DirectoryPage } from "@/components/directory-page";
+import { EditSeasonDialog } from "@/components/edit-season-dialog";
+import { CreateSeasonDialog } from "@/components/create-season-dialog";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
-
-function formatDate(ms: number): string {
-  try {
-    return new Date(ms).toLocaleString();
-  } catch {
-    return "";
-  }
-}
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useQuery } from "convex/react";
+import { formatDateTime } from "@/lib/utils";
 
 type SeasonItem = {
   id: string;
@@ -84,31 +76,19 @@ export default function SeasonsPage() {
     rawStart: s.start,
     rawEnd: s.end,
     name: s.name,
-    start: formatDate(s.start),
-    end: formatDate(s.end),
+    start: formatDateTime(s.start),
+    end: formatDateTime(s.end),
   }));
 
   return (
-    <>
-      <Header />
-      <main className="p-8 flex flex-col gap-6 max-w-5xl mx-auto">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold text-foreground">Seasons</h1>
-          <p className="text-muted-foreground">
-            Browse all seasons.
-          </p>
-        </div>
-
-        <CreateSeasonDialog />
-
-        {seasons === undefined ? (
-          <div className="flex items-center justify-center py-20">
-            <p className="text-muted-foreground">Loading seasons…</p>
-          </div>
-        ) : (
-          <DataTable columns={columns} data={items} />
-        )}
-      </main>
-    </>
+    <DirectoryPage
+      title="Seasons"
+      description="Browse all seasons."
+      createButton={<CreateSeasonDialog />}
+      columns={columns}
+      data={items}
+      isLoading={seasons === undefined}
+      loadingLabel="Loading seasons…"
+    />
   );
 }

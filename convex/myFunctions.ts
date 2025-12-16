@@ -1,10 +1,30 @@
 import { v } from "convex/values";
-import { query, mutation, action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { query, mutation } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 // Write your Convex functions in any file inside this directory (`convex`).
 // See https://docs.convex.dev/functions for more.
+
+const loadMatchesForPlayer = async (ctx: any, playerId: Id<"users">) => {
+  const winnerMatches: Array<Doc<"matches">> = await ctx.db
+    .query("matches")
+    .withIndex("by_winner", (q: any) => q.eq("winner", playerId))
+    .collect();
+
+  const loserMatches: Array<Doc<"matches">> = await ctx.db
+    .query("matches")
+    .withIndex("by_loser", (q: any) => q.eq("loser", playerId))
+    .collect();
+
+  const deduped = new Map<string, Doc<"matches">>();
+  for (const match of [...winnerMatches, ...loserMatches]) {
+    if (match.deleted) continue;
+    deduped.set(match._id, match);
+  }
+
+  return Array.from(deduped.values()).sort((a, b) => b.date - a.date);
+};
 
 // Get the current authenticated user
 export const getCurrentUser = query({
@@ -40,16 +60,23 @@ export const listPlayers = query({
       role: v.union(v.literal("player"), v.literal("judge")),
       name: v.string(),
       image: v.optional(v.string()),
+      hasAccount: v.boolean(),
     })
   ),
   handler: async (ctx) => {
     const players = await ctx.db.query("users").order("desc").collect();
+
+    // Preload auth accounts to avoid N+1 lookups; auth tables come from authTables schema.
+    const accounts = await ctx.db.query("authAccounts").collect();
+    const accountByUserId = new Set(accounts.map((a) => a.userId));
+
     return players.map((p) => ({
       _id: p._id,
       _creationTime: p._creationTime,
       role: p.role,
       name: p.name,
       image: p.image,
+      hasAccount: accountByUserId.has(p._id),
     }));
   },
 });
@@ -199,14 +226,58 @@ export const getPlayerMatches = query({
       _creationTime: v.number(),
       date: v.number(),
       tournament: v.optional(v.id("tournaments")),
-      winner: v.id("users"),
-      loser: v.id("users"),
+      tournamentName: v.optional(v.string()),
+      tournamentDate: v.optional(v.number()),
+      opponentId: v.id("users"),
+      opponentName: v.optional(v.string()),
+      playerWon: v.boolean(),
     })
   ),
   handler: async (ctx, args) => {
-    const matches = await ctx.db.query("matches").collect();
-    return matches.filter(
-      (m) => m.winner === args.playerId || m.loser === args.playerId
+    const matches = await loadMatchesForPlayer(ctx, args.playerId);
+    const userCache = new Map<string, Doc<"users"> | null>();
+    const tournamentCache = new Map<string, Doc<"tournaments"> | null>();
+
+    return Promise.all(
+      matches.map(async (match) => {
+        const playerWon = match.winner === args.playerId;
+        const opponentId = playerWon ? match.loser : match.winner;
+
+        if (!userCache.has(opponentId)) {
+          userCache.set(opponentId, await ctx.db.get(opponentId));
+        }
+
+        let tournamentName: string | undefined;
+        let tournamentDate: number | undefined;
+        let tournamentId = match.tournament;
+
+        if (tournamentId) {
+          if (!tournamentCache.has(tournamentId)) {
+            tournamentCache.set(tournamentId, await ctx.db.get(tournamentId));
+          }
+          const tournament = tournamentCache.get(tournamentId);
+          if (tournament && !tournament.deleted) {
+            tournamentName = tournament.name;
+            tournamentDate = tournament.date;
+          } else {
+            tournamentId = undefined;
+          }
+        }
+
+        const opponent = userCache.get(opponentId);
+
+        return {
+          _id: match._id,
+          _creationTime: match._creationTime,
+          date: match.date,
+          tournament: tournamentId,
+          tournamentName,
+          tournamentDate,
+          opponentId,
+          opponentName: opponent?.name,
+          playerWon,
+        };
+      })
     );
   },
 });
@@ -224,15 +295,30 @@ export const getPlayerTournaments = query({
     })
   ),
   handler: async (ctx, args) => {
-    const matches = await ctx.db.query("matches").collect();
-    const tournamentIds = new Set(
-      matches
-        .filter((m) => m.winner === args.playerId || m.loser === args.playerId)
-        .map((m) => m.tournament)
-    );
-    
-    const tournaments = await ctx.db.query("tournaments").collect();
-    return tournaments.filter((t) => tournamentIds.has(t._id));
+    const matches = await loadMatchesForPlayer(ctx, args.playerId);
+    const tournamentIds = new Set<Id<"tournaments">>();
+
+    for (const match of matches) {
+      if (match.tournament) {
+        tournamentIds.add(match.tournament);
+      }
+    }
+
+    const tournaments: Array<Doc<"tournaments">> = [];
+    for (const tournamentId of tournamentIds) {
+      const tournament = await ctx.db.get(tournamentId);
+      if (tournament && !tournament.deleted) {
+        tournaments.push(tournament);
+      }
+    }
+
+    return tournaments.map((tournament) => ({
+      _id: tournament._id,
+      _creationTime: tournament._creationTime,
+      name: tournament.name,
+      date: tournament.date,
+      winner: tournament.winner,
+    }));
   },
 });
 
@@ -249,15 +335,23 @@ export const getPlayerSeasons = query({
     })
   ),
   handler: async (ctx, args) => {
-    const matches = await ctx.db.query("matches").collect();
-    const playerMatches = matches.filter(
-      (m) => m.winner === args.playerId || m.loser === args.playerId
-    );
-    
+    const matches = await loadMatchesForPlayer(ctx, args.playerId);
     const seasons = await ctx.db.query("seasons").collect();
-    return seasons.filter((season) =>
-      playerMatches.some((match) => match.date >= season.start && match.date <= season.end)
-    );
+
+    return seasons
+      .filter((season) => !season.deleted)
+      .filter((season) =>
+        matches.some(
+          (match) => match.date >= season.start && match.date <= season.end
+        )
+      )
+      .map((season) => ({
+        _id: season._id,
+        _creationTime: season._creationTime,
+        name: season.name,
+        start: season.start,
+        end: season.end,
+      }));
   },
 });
 
