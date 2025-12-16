@@ -51,9 +51,9 @@ function PodiumCard({
   };
 
   const cardHeights = {
-    1: "md:h-[280px]",
-    2: "md:h-[240px]",
-    3: "md:h-[240px]",
+    1: "md:min-h-[320px]",
+    2: "md:min-h-[280px]",
+    3: "md:min-h-[280px]",
   };
 
   return (
@@ -65,7 +65,7 @@ function PodiumCard({
           isFirst && "md:border-2 md:border-yellow-500"
         )}
       >
-        <CardHeader className="text-center pb-3">
+        <CardHeader className="text-center pb-2">
           <div
             className={cn(
               "w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-2",
@@ -96,11 +96,11 @@ function PodiumCard({
           )}
         </CardHeader>
 
-        <CardContent className="text-center">
-          <CardTitle className={isFirst ? "text-xl" : "text-lg"}>
+        <CardContent className="text-center pb-4">
+          <CardTitle className={cn("mb-2", isFirst ? "text-xl" : "text-lg")}>
             {player.playerName}
           </CardTitle>
-          <div className="mt-3">
+          <div className="mb-2">
             <div
               className={cn("font-bold", isFirst ? "text-3xl" : "text-2xl")}
             >
@@ -112,7 +112,7 @@ function PodiumCard({
           {player.inactivityPenalty > 0 && (
             <Badge
               variant="outline"
-              className="mt-2 text-amber-600 border-amber-600"
+              className="text-amber-600 border-amber-600"
             >
               Inactive (-{Math.round(player.inactivityPenalty)})
             </Badge>
