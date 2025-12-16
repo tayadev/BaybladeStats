@@ -6,6 +6,9 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/header";
 import Link from "next/link";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 function SeasonWithElo({ season, playerId }: { season: any; playerId: Id<"users"> }) {
   const eloData = useQuery(api.eloQueries.getPlayerCurrentElo, {
@@ -46,6 +49,81 @@ function SeasonWithElo({ season, playerId }: { season: any; playerId: Id<"users"
         </div>
       </div>
     </Link>
+  );
+}
+
+function EloProgressionChart({ season, playerId }: { season: any; playerId: Id<"users"> }) {
+  const eloHistory = useQuery(api.eloQueries.getPlayerEloHistory, {
+    playerId,
+    seasonId: season._id,
+  });
+
+  if (!eloHistory || eloHistory.length === 0) {
+    return null;
+  }
+
+  const chartData = eloHistory.map((snapshot, index) => ({
+    index: index + 1,
+    date: new Date(snapshot.timestamp).toLocaleDateString(),
+    elo: Math.round(snapshot.elo),
+    reason: snapshot.metadata.reason,
+  }));
+
+  const chartConfig = {
+    elo: {
+      label: "ELO",
+      color: "hsl(var(--chart-1))",
+    },
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>ELO Progression - {season.name}</CardTitle>
+        <CardDescription>
+          {new Date(season.start).toLocaleDateString()} -{" "}
+          {new Date(season.end).toLocaleDateString()}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis
+                dataKey="index"
+                label={{ value: "Match #", position: "insideBottom", offset: -5 }}
+                className="text-xs"
+              />
+              <YAxis
+                label={{ value: "ELO", angle: -90, position: "insideLeft" }}
+                className="text-xs"
+              />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value, name) => (
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{value}</span>
+                        <span className="text-muted-foreground">ELO</span>
+                      </div>
+                    )}
+                  />
+                }
+              />
+              <Line
+                type="monotone"
+                dataKey="elo"
+                stroke="hsl(var(--chart-1))"
+                strokeWidth={2}
+                dot={{ fill: "hsl(var(--chart-1))", r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -141,6 +219,17 @@ export default function PlayerProfilePage() {
             </div>
           </div>
         </div>
+
+        {seasons && seasons.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold">ELO Progression</h2>
+            <div className="space-y-4">
+              {seasons.map((season) => (
+                <EloProgressionChart key={season._id} season={season} playerId={id!} />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="rounded-lg border bg-card p-6 shadow-sm">
           <h2 className="text-xl font-semibold mb-4">Seasons</h2>
