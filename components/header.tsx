@@ -19,6 +19,14 @@ export const navLinks = [
 		href: "/players",
 	},
 	{
+		label: "Seasons",
+		href: "/seasons",
+	},
+	{
+		label: "Matches",
+		href: "/matches",
+	},
+	{
 		label: "About",
 		href: "/about",
 	},

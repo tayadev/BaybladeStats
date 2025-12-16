@@ -13,7 +13,20 @@ export default defineSchema({
     email: v.optional(v.string()),
     image: v.optional(v.string()),
   }),
-  numbers: defineTable({
-    value: v.number(),
+  seasons: defineTable({
+    name: v.string(),
+    start: v.number(),
+    end: v.number(),
+  }),
+  tournaments: defineTable({
+    name: v.string(),
+    date: v.number(),
+    winner: v.id("users"),
+  }),
+  matches: defineTable({
+    date: v.number(),
+    tournament: v.id("tournaments"),
+    winner: v.id("users"),
+    loser: v.id("users"),
   }),
 });
