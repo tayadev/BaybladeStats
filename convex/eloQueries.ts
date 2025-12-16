@@ -2,6 +2,20 @@ import { query } from "./_generated/server";
 import { v } from "convex/values";
 import { calculateInactivityPenalty } from "./eloCalculations";
 
+export const getCurrentSeason = query({
+  args: {},
+  handler: async (ctx) => {
+    const seasons = await ctx.db.query("seasons").collect();
+    const currentTime = Date.now();
+
+    const activeSeason = seasons.find(
+      (s) => !s.deleted && currentTime >= s.start && currentTime <= s.end
+    );
+
+    return activeSeason ?? null;
+  },
+});
+
 export const getPlayerCurrentElo = query({
   args: {
     playerId: v.id("users"),
