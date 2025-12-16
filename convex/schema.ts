@@ -17,16 +17,19 @@ export default defineSchema({
     name: v.string(),
     start: v.number(),
     end: v.number(),
+    deleted: v.optional(v.boolean()),
   }),
   tournaments: defineTable({
     name: v.string(),
     date: v.number(),
     winner: v.id("users"),
+    deleted: v.optional(v.boolean()),
   }),
   matches: defineTable({
     date: v.number(),
-    tournament: v.id("tournaments"),
+    tournament: v.optional(v.id("tournaments")),
     winner: v.id("users"),
     loser: v.id("users"),
+    deleted: v.optional(v.boolean()),
   }),
 });

@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import DataTable from "@/components/table";
 import { Header } from "@/components/header";
+import { CreatePlayerDialog } from "@/components/create-player-dialog";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,8 @@ export default function PlayersDirectoryPage() {
             Browse all registered players.
           </p>
         </div>
+
+        <CreatePlayerDialog />
 
         {players === undefined ? (
           <div className="flex items-center justify-center py-20">

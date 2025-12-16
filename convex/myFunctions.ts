@@ -93,7 +93,8 @@ export const listSeasons = query({
     })
   ),
   handler: async (ctx) => {
-    return await ctx.db.query("seasons").order("desc").collect();
+     const seasons = await ctx.db.query("seasons").order("desc").collect();
+     return seasons.filter((s) => !s.deleted);
   },
 });
 
@@ -128,7 +129,8 @@ export const listTournaments = query({
     })
   ),
   handler: async (ctx) => {
-    return await ctx.db.query("tournaments").order("desc").collect();
+     const tournaments = await ctx.db.query("tournaments").order("desc").collect();
+     return tournaments.filter((t) => !t.deleted);
   },
 });
 
@@ -158,13 +160,33 @@ export const listMatches = query({
       _id: v.id("matches"),
       _creationTime: v.number(),
       date: v.number(),
-      tournament: v.id("tournaments"),
+      tournament: v.optional(v.id("tournaments")),
       winner: v.id("users"),
       loser: v.id("users"),
     })
   ),
   handler: async (ctx) => {
-    return await ctx.db.query("matches").order("desc").collect();
+     const matches = await ctx.db.query("matches").order("desc").collect();
+     return matches.filter((m) => !m.deleted);
+  },
+});
+
+// Get a match by id
+export const getMatchById = query({
+  args: { id: v.id("matches") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("matches"),
+      _creationTime: v.number(),
+      date: v.number(),
+      tournament: v.optional(v.id("tournaments")),
+      winner: v.id("users"),
+      loser: v.id("users"),
+    })
+  ),
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
   },
 });
 
@@ -176,7 +198,7 @@ export const getPlayerMatches = query({
       _id: v.id("matches"),
       _creationTime: v.number(),
       date: v.number(),
-      tournament: v.id("tournaments"),
+      tournament: v.optional(v.id("tournaments")),
       winner: v.id("users"),
       loser: v.id("users"),
     })
@@ -236,5 +258,262 @@ export const getPlayerSeasons = query({
     return seasons.filter((season) =>
       playerMatches.some((match) => match.date >= season.start && match.date <= season.end)
     );
+  },
+});
+
+// Create a new player (for judges)
+export const createPlayer = mutation({
+  args: {
+    name: v.string(),
+    role: v.union(v.literal("player"), v.literal("judge")),
+  },
+  returns: v.id("users"),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be authenticated to create a player");
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "judge") {
+      throw new Error("Only judges can create players");
+    }
+    
+    return await ctx.db.insert("users", {
+      name: args.name,
+      role: args.role,
+    });
+  },
+});
+
+// Create a new season (for judges)
+export const createSeason = mutation({
+  args: {
+    name: v.string(),
+    start: v.number(),
+    end: v.number(),
+  },
+  returns: v.id("seasons"),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be authenticated to create a season");
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "judge") {
+      throw new Error("Only judges can create seasons");
+    }
+    
+    return await ctx.db.insert("seasons", {
+      name: args.name,
+      start: args.start,
+      end: args.end,
+    });
+  },
+});
+
+// Create a new tournament (for judges)
+export const createTournament = mutation({
+  args: {
+    name: v.string(),
+    date: v.number(),
+    winner: v.id("users"),
+  },
+  returns: v.id("tournaments"),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be authenticated to create a tournament");
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "judge") {
+      throw new Error("Only judges can create tournaments");
+    }
+    
+    return await ctx.db.insert("tournaments", {
+      name: args.name,
+      date: args.date,
+      winner: args.winner,
+    });
+  },
+});
+
+// Create a new match (for judges)
+export const createMatch = mutation({
+  args: {
+    date: v.number(),
+    tournament: v.optional(v.id("tournaments")),
+    winner: v.id("users"),
+    loser: v.id("users"),
+  },
+  returns: v.id("matches"),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be authenticated to create a match");
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "judge") {
+      throw new Error("Only judges can create matches");
+    }
+    
+    return await ctx.db.insert("matches", {
+      date: args.date,
+      tournament: args.tournament,
+      winner: args.winner,
+      loser: args.loser,
+    });
+  },
+});
+
+// Update a season (for judges)
+export const updateSeason = mutation({
+  args: {
+    id: v.id("seasons"),
+    name: v.string(),
+    start: v.number(),
+    end: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be authenticated to update a season");
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "judge") {
+      throw new Error("Only judges can update seasons");
+    }
+    
+    await ctx.db.patch(args.id, {
+      name: args.name,
+      start: args.start,
+      end: args.end,
+    });
+    return null;
+  },
+});
+
+// Delete a season (soft delete for judges)
+export const deleteSeason = mutation({
+  args: { id: v.id("seasons") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be authenticated to delete a season");
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "judge") {
+      throw new Error("Only judges can delete seasons");
+    }
+    
+    await ctx.db.patch(args.id, { deleted: true });
+    return null;
+  },
+});
+
+// Update a tournament (for judges)
+export const updateTournament = mutation({
+  args: {
+    id: v.id("tournaments"),
+    name: v.string(),
+    date: v.number(),
+    winner: v.id("users"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be authenticated to update a tournament");
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "judge") {
+      throw new Error("Only judges can update tournaments");
+    }
+    
+    await ctx.db.patch(args.id, {
+      name: args.name,
+      date: args.date,
+      winner: args.winner,
+    });
+    return null;
+  },
+});
+
+// Delete a tournament (soft delete for judges)
+export const deleteTournament = mutation({
+  args: { id: v.id("tournaments") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be authenticated to delete a tournament");
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "judge") {
+      throw new Error("Only judges can delete tournaments");
+    }
+    
+    await ctx.db.patch(args.id, { deleted: true });
+    return null;
+  },
+});
+
+// Update a match (for judges)
+export const updateMatch = mutation({
+  args: {
+    id: v.id("matches"),
+    date: v.number(),
+    tournament: v.optional(v.id("tournaments")),
+    winner: v.id("users"),
+    loser: v.id("users"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be authenticated to update a match");
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "judge") {
+      throw new Error("Only judges can update matches");
+    }
+    
+    await ctx.db.patch(args.id, {
+      date: args.date,
+      tournament: args.tournament,
+      winner: args.winner,
+      loser: args.loser,
+    });
+    return null;
+  },
+});
+
+// Delete a match (soft delete for judges)
+export const deleteMatch = mutation({
+  args: { id: v.id("matches") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Must be authenticated to delete a match");
+    }
+    
+    const user = await ctx.db.get(userId);
+    if (!user || user.role !== "judge") {
+      throw new Error("Only judges can delete matches");
+    }
+    
+    await ctx.db.patch(args.id, { deleted: true });
+    return null;
   },
 });
