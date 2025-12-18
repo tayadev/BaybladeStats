@@ -14,11 +14,6 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -74,6 +69,49 @@ export default function DataTable<TData, TValue>({
 
   const pageCount = table.getPageCount();
   const currentPage = table.getState().pagination.pageIndex + 1;
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const delta = 2; // Show 2 pages on each side of current page
+    const maxVisiblePages = 7; // Maximum pages before using ellipsis (includes first, last, and ellipsis)
+
+    if (pageCount <= maxVisiblePages) {
+      // If total pages is small, show all pages
+      return Array.from({ length: pageCount }, (_, i) => i + 1);
+    }
+
+    // Always include first page
+    pages.push(1);
+
+    // Calculate range around current page
+    const rangeStart = Math.max(2, currentPage - delta);
+    const rangeEnd = Math.min(pageCount - 1, currentPage + delta);
+
+    // Add ellipsis after first page if needed
+    if (rangeStart > 2) {
+      pages.push("...");
+    }
+
+    // Add pages around current page
+    for (let i = rangeStart; i <= rangeEnd; i++) {
+      pages.push(i);
+    }
+
+    // Add ellipsis before last page if needed
+    if (rangeEnd < pageCount - 1) {
+      pages.push("...");
+    }
+
+    // Always include last page if there's more than one page
+    if (pageCount > 1) {
+      pages.push(pageCount);
+    }
+
+    return pages;
+  };
+
+  const pageNumbers = getPageNumbers();
 
   return (
     <div className="max-w-4xl w-full space-y-4">
@@ -176,17 +214,26 @@ export default function DataTable<TData, TValue>({
             <ChevronLeft className="h-4 w-4" />
             <span className="sr-only">Previous page</span>
           </Button>
-          {Array.from({ length: pageCount }, (_, i) => i + 1).map((page) => (
-            <Button
-              key={page}
-              variant={currentPage === page ? "default" : "outline"}
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => table.setPageIndex(page - 1)}
-            >
-              {page}
-            </Button>
-          ))}
+          {pageNumbers.map((page, index) =>
+            typeof page === "number" ? (
+              <Button
+                key={page}
+                variant={currentPage === page ? "default" : "outline"}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => table.setPageIndex(page - 1)}
+              >
+                {page}
+              </Button>
+            ) : (
+              <span
+                key={`ellipsis-${index}`}
+                className="h-8 w-8 flex items-center justify-center text-muted-foreground"
+              >
+                {page}
+              </span>
+            )
+          )}
           <Button
             variant="outline"
             size="icon"
