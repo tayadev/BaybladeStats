@@ -21,7 +21,7 @@ type PlayerItem = {
   hasAccount: boolean;
 };
 
-const columns: ColumnDef<PlayerItem, any>[] = [
+const baseColumns: ColumnDef<PlayerItem, any>[] = [
   {
     accessorKey: "name",
     header: "Name",
@@ -55,6 +55,10 @@ const columns: ColumnDef<PlayerItem, any>[] = [
     accessorKey: "created",
     header: "Joined",
   },
+];
+
+const columns: ColumnDef<PlayerItem, any>[] = [
+  ...baseColumns,
   {
     id: "actions",
     header: "",
@@ -86,7 +90,7 @@ export default function PlayersDirectoryPage() {
 
   // Create columns with access to currentUser for conditional rendering
   const columnsWithActions: ColumnDef<PlayerItem, any>[] = [
-    ...columns.slice(0, -1), // All columns except the actions column
+    ...baseColumns,
     {
       id: "actions",
       header: "",

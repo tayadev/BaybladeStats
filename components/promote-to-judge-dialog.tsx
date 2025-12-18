@@ -45,10 +45,9 @@ export function PromoteToJudgeDialog({ playerId, playerName }: PromoteToJudgeDia
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (!newOpen) {
-      setTimeout(() => {
-        setError("");
-        setIsProcessing(false);
-      }, 300);
+      // Reset state when dialog closes
+      setError("");
+      setIsProcessing(false);
     }
   };
 
