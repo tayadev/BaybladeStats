@@ -971,7 +971,7 @@ export const mergeUserAccounts = mutation({
     stats: v.object({
       matchesUpdated: v.number(),
       tournamentsUpdated: v.number(),
-      eloSnapshotsUpdated: v.number(),
+      eloSnapshotsDeleted: v.number(),
     }),
     message: v.string(),
   }),
@@ -1027,7 +1027,7 @@ export const mergeUserAccounts = mutation({
     // Perform the merge - inline to avoid circular reference
     let matchesUpdated = 0;
     let tournamentsUpdated = 0;
-    let eloSnapshotsUpdated = 0;
+    let eloSnapshotsDeleted = 0;
 
     // Update matches where source is winner
     const matchesAsWinner = await ctx.db
@@ -1060,13 +1060,14 @@ export const mergeUserAccounts = mutation({
       tournamentsUpdated++;
     }
 
-    // Update ELO snapshots
+    // Delete source player's ELO snapshots
+    // The recalculateSeasonElo function will regenerate them correctly for the merged account
     const eloSnapshots = await ctx.db.query("eloSnapshots").collect();
     const sourceEloSnapshots = eloSnapshots.filter(e => e.playerId === args.sourceUserId);
 
     for (const snapshot of sourceEloSnapshots) {
-      await ctx.db.patch(snapshot._id, { playerId: args.targetUserId });
-      eloSnapshotsUpdated++;
+      await ctx.db.delete(snapshot._id);
+      eloSnapshotsDeleted++;
     }
 
     // Soft delete source user
@@ -1075,7 +1076,7 @@ export const mergeUserAccounts = mutation({
     const stats = {
       matchesUpdated,
       tournamentsUpdated,
-      eloSnapshotsUpdated,
+      eloSnapshotsDeleted,
     };
 
     // Identify affected seasons and trigger ELO recalculation
